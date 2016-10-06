@@ -116,19 +116,10 @@ is_resolved () {
 
 # Copy a library into an application-specific location.
 copy_lib () {
-    local _lib="${1##*/}"
-
-    msg "copying $_lib (from $1)..."
-    cp $1 $files/lib
-    libraries[$_lib]="copied"
-}
-
-
-# Copy a library into an application-specific location.
-copy_lib () {
     local _lib="${1##*/}" _to="${2:-$files/lib}"
 
     msg "        -> copying $_lib into application"
+    mkdir -p $_to
     cp $1 $_to/$_lib.suppressed
     libraries[$_lib]="copied"
 }
