@@ -1,0 +1,6 @@
+Alias "/flatpak/" "@PATH@/"
+
+<Directory @PATH@>
+  Options Indexes FollowSymLinks
+  Require all granted
+</Directory>

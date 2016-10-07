@@ -32,7 +32,7 @@ all: make-repo populate-runtime populate-sdk runtime.libs
 
 clean: clean-repo
 
-make-repo:
+make-repo: flatpak-repo.conf
 	if [ ! -d $(REPO) ]; then \
 	    echo "Initializing OSTree repo $(REPO)..."; \
 	    ostree --repo=$(REPO) init --mode=archive-z2; \
@@ -96,3 +96,23 @@ $(SDK_TAR):
 	popd
 
 sdk: populate-sdk
+
+flatpak-repo.conf: flatpak-repo.conf.in
+	cat $< | sed 's#@PATH@#$(REPO)#g' > $@
+	echo ""
+	echo "* Generated configuration file $@."
+	echo ""
+	echo "* This is an Apache configuration file for exporting your flatpak"
+	echo "* repository over HTTP. Please"
+	echo "*   - copy it to a location appropriate for your distro"
+	echo "        (cp $@ /etc/httpd/conf.d; on Fedora)"
+	echo "    - adjust your firewall settings to let HTTP traffic in,"
+	echo "        (sudo iptables -t filter -I INPUT -p tcp --dport 80 -j ACCEPT)"
+	echo "    - and restart apache"
+	echo "        (sudo systemctl restart httpd)"
+	echo -e '\a'
+	sleep 1
+	echo -e '\a'
+	sleep 1
+
+.SILENT:
