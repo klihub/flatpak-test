@@ -11,6 +11,7 @@ print_usage () {
     echo "    -F <fs>    allow access to the given filesystem, which can be"
     echo "               'host', 'home', or a path"
     echo "    -R <repo>  flatpak repository to export the application to"
+    echo "    -C <uri>   clone the sources from the give Git URI"
     echo "    <version>  use application version/branch, defaults to 0.0.1"
     echo ""
     echo "For example:"
@@ -52,6 +53,10 @@ parse_command_line () {
                 FLATPAK_REPO="$2"
                 shift 2
                 ;;
+            --clone|-C)
+                FLATPAK_CLONE="$2"
+                shift 2
+                ;;
             --help|-h)
                 print_usage
                 exit 0
@@ -64,9 +69,17 @@ parse_command_line () {
             esac
     done
 
-    if [ -z "$FLATPAK_APP" -o -z "$FLATPAK_SRC" -o -z "$FLATPAK_CMD" ]; then
+    if [ -z "$FLATPAK_APP" ]; then
         print_usage
         exit 1
+    fi
+
+    if [ -z "$FLATPAK_SRC" ]; then
+        FLATPAK_SRC=$FLATPAK_APP
+    fi
+
+    if [ -z "$FLATPAK_CMD" ]; then
+        FLATPAK_CMD=$FLATPAK_APP
     fi
 
     builddir=".$FLATPAK_APP.builddir"
@@ -92,8 +105,8 @@ flatpak_configure () {
     if [ ! -f configure ]; then
         if [ -x autogen.sh ]; then
             ./autogen.sh
-        elif [ -x bootstrap.sh -o -x bootstrap ]; then
-            ./bootstrap.sh || ./bootstrap
+        elif [ -x bootstrap ]; then
+            ./bootstrap
         fi
     fi
 
@@ -155,6 +168,12 @@ flatpak_export () {
     flatpak build-export $FLATPAK_REPO $builddir
 }
 
+# Clone the app sources from the given repository.
+clone_sources () {
+    echo "Cloning $FLATPAK_CLONE into $FLATPAK_SRC..."
+    git clone $FLATPAK_CLONE $FLATPAK_SRC
+}
+
 
 #########################
 # main script
@@ -164,6 +183,10 @@ FLATPAK_VER="0.0.1"
 set -e
 
 parse_command_line $*
+
+if [ ! -e $FLATPAK_SRC ]; then
+    clone_sources
+fi
 
 flatpak_init
 flatpak_configure
