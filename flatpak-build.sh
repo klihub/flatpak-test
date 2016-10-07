@@ -170,8 +170,12 @@ flatpak_export () {
 
 # Clone the app sources from the given repository.
 clone_sources () {
-    echo "Cloning $FLATPAK_CLONE into $FLATPAK_SRC..."
-    git clone $FLATPAK_CLONE $FLATPAK_SRC
+    if [ ! -e $FLATPAK_SRC ]; then
+        echo "* Cloning $FLATPAK_CLONE into $FLATPAK_SRC..."
+        git clone $FLATPAK_CLONE $FLATPAK_SRC
+    elif [ -n "$FLATPAK_CLONE" ]; then
+        echo "* $FLATPAK_SRC already exists, *not* cloning $FLATPAK_CLONE..."
+    fi
 }
 
 
@@ -184,10 +188,7 @@ set -e
 
 parse_command_line $*
 
-if [ ! -e $FLATPAK_SRC ]; then
-    clone_sources
-fi
-
+clone_sources
 flatpak_init
 flatpak_configure
 flatpak_build
@@ -196,7 +197,10 @@ flatpak_resolve_libs
 flatpak_finish
 flatpak_export
 
-echo $?
+echo ""
+echo "$FLATPAK_APP exported to the repository as org.flatpak.$FLATPAK_APP."
+
+exit $?
 
 #rm -fr $builddir && mkdir $builddir
 #flatpak build-init $builddir org.flatpak.$name \
