@@ -165,7 +165,7 @@ flatpak_finish () {
 flatpak_export () {
     echo "Exporting flatpak app to repository $FLATPAK_REPO..."
 
-    flatpak build-export $FLATPAK_REPO $builddir
+    flatpak build-export $FLATPAK_SIGN $FLATPAK_REPO $builddir
 }
 
 # Clone the app sources from the given repository.
@@ -183,6 +183,7 @@ clone_sources () {
 # main script
 FLATPAK_REPO="repo"
 FLATPAK_VER="0.0.1"
+FLATPAK_SIGN="--gpg-homedir=$(pwd)/gpg --gpg-sign=repo-signing@key"
 
 set -e
 

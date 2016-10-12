@@ -2,6 +2,15 @@ ARCH      = x86_64
 QEMUARCH  = qemux86-64
 VERSION   = 0.0.1
 
+GPG_HOME   = $(TOPDIR)/gpg
+GPG        = gpg  --homedir=$(GPG_HOME)
+GPG2       = gpg2 --homedir=$(GPG_HOME)
+KEY_NAME   = repo-signing@key
+KEY_CFG    = repo-key.cfg
+KEY_PUB    = repo-key.pub
+KEY_SEC    = repo-key.sec
+GPG_SIGN   = --gpg-homedir=$(GPG_HOME) --gpg-sign=$(KEY_NAME)
+
 TOPDIR    = $(CURDIR)
 REPO      = $(TOPDIR)/repo
 POKY      = $(TOPDIR)/../poky
@@ -41,7 +50,7 @@ make-repo: flatpak-repo.conf
 clean-repo:
 	rm -fr $(REPO)
 
-populate-runtime: make-repo $(RUNTIME_TAR)
+populate-runtime: make-repo gen-keys $(RUNTIME_TAR)
 	rm -fr $(TMP_RUNTIME) && mkdir $(TMP_RUNTIME)
 	echo "Populating $(REPO) with runtime image..."
 	(cd $(TMP_RUNTIME); \
@@ -53,10 +62,10 @@ populate-runtime: make-repo $(RUNTIME_TAR)
 	    sed 's/@ARCH@/$(ARCH)/g;s/@VERSION@/$(VERSION)/g' \
 	        > $(TMP_RUNTIME)/metadata
 	find $(TMP_RUNTIME) -type f -exec chmod u+r {} \;
-	ostree --repo=$(REPO) commit \
+	ostree --repo=$(REPO) commit $(GPG_SIGN) \
 	    --owner-uid=0 --owner-gid=0 --no-xattrs \
 	    --branch=$(RUNTIME_BRANCH) -s "Runtime $(VERSION)" $(TMP_RUNTIME)
-	ostree --repo=$(REPO) summary -u
+	ostree --repo=$(REPO) summary $(GPG_SIGN) -u
 	rm -fr $(TMP_RUNTIME)
 
 $(RUNTIME_TAR):
@@ -71,7 +80,7 @@ runtime.libs: $(RUNTIME_TAR)
 	tar -tjf $(RUNTIME_TAR) | grep 'lib/lib.*\.so\.' > $@
 
 
-populate-sdk: make-repo $(SDK_TAR)
+populate-sdk: make-repo gen-keys $(SDK_TAR)
 	rm -fr $(TMP_SDK) && mkdir $(TMP_SDK)
 	echo "Populating $(REPO) with SDK image..."
 	(cd $(TMP_SDK); \
@@ -83,10 +92,10 @@ populate-sdk: make-repo $(SDK_TAR)
 	    sed 's/@ARCH@/$(ARCH)/g;s/@VERSION@/$(VERSION)/g' \
 	        > $(TMP_SDK)/metadata
 	find $(TMP_SDK) -type f -exec chmod u+r {} \;
-	ostree --repo=$(REPO) commit \
+	ostree --repo=$(REPO) commit $(GPG_SIGN) \
 	    --owner-uid=0 --owner-gid=0 --no-xattrs \
 	    --branch=$(SDK_BRANCH) -s "SDK $(VERSION)" $(TMP_SDK)
-	ostree --repo=$(REPO) summary -u
+	ostree --repo=$(REPO) summary $(GPG_SIGN) -u
 	rm -fr $(TMP_SDK)
 
 $(SDK_TAR):
@@ -114,5 +123,18 @@ flatpak-repo.conf: flatpak-repo.conf.in
 	sleep 1
 	echo -e '\a'
 	sleep 1
+
+$(KEY_PUB) $(KEY_SEC): $(KEY_CFG)
+	echo "* Generating signing GPG keys for the repository..."
+	mkdir -p $(GPG_HOME)
+	$(GPG) --batch --gen-key $<
+	$(GPG) --import $(KEY_SEC)
+	$(GPG) --import $(KEY_PUB)
+	$(GPG) --export-secret-keys | $(GPG2) --import
+
+gen-keys: $(KEY_PUB) $(KEY_SEC)
+
+clean-keys:
+	rm -fr $(GPG_HOME) $(KEY_PUB) $(KEY_SEC)
 
 .SILENT:
