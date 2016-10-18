@@ -203,7 +203,7 @@ repo_update_summary () {
 REPO_PATH=flatpak.repo
 GPG_HOME=.gpg.flatpak
 GPG_KEY=repo-signing@key
-IMG_ARCH=x86-64
+IMG_ARCH=x86_64
 IMG_VERSION=0.0.1
 IMG_METADATA=""
 IMG_TARBALL=""
