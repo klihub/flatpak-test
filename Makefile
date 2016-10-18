@@ -25,7 +25,8 @@ SDK_LIBS      = sdk.libs
 all: populate-runtime populate-sdk
 
 populate-runtime: $(KEY_SEC) $(RUNTIME_TAR) $(RUNTIME_LIBS)
-	$(SCRIPTS)/populate-repo.sh --builddir $(POKY)/build --type runtime
+	$(SCRIPTS)/populate-repo.sh --repo $(REPO) \
+	    --builddir $(POKY)/build --type runtime
 
 $(RUNTIME_TAR):
 	pushd $(POKY) && \
@@ -41,7 +42,8 @@ runtime: populate-runtime
 
 
 populate-sdk: $(KEY_SEC) $(SDK_TAR) $(SDK_LIBS)
-	$(SCRIPTS)/populate-repo.sh --builddir $(POKY)/build --type sdk
+	$(SCRIPTS)/populate-repo.sh --repo $(REPO) \
+	    --builddir $(POKY)/build --type sdk
 
 $(SDK_TAR):
 	pushd $(POKY) && \
@@ -75,7 +77,7 @@ flatpak-repo.conf: flatpak-repo.conf.in
 
 
 $(KEY_PUB) $(KEY_SEC): $(KEY_CFG)
-	$(SCRIPTS)/gpg-keygen.sh -c $(KEY_CFG)
+	$(SCRIPTS)/gpg-keygen.sh -H $(GPG_HOME) -c $(KEY_CFG)
 
 clean-keys:
 	rm -fr $(GPG_HOME) $(KEY_PUB) $(KEY_SEC)
