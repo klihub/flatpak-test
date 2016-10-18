@@ -172,7 +172,7 @@ repo_populate () {
     echo "* Creating image sysroot ($SYSROOT) from $IMG_TARBALL..."
     mkdir -p $SYSROOT
     tar --transform "s,^./usr,$SYSROOT/files,S" \
-        --transform "s,^./etc/,$SYSROOT/file/etc,S" \
+        --transform "s,^./etc,$SYSROOT/file/etc,S" \
         --exclude './[!eu]*' -xjf $IMG_TARBALL;
     find $SYSROOT -type f -exec chmod u+r {} \;
     mv $REPO_METADATA $SYSROOT/metadata
