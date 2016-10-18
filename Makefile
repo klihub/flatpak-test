@@ -2,71 +2,30 @@ ARCH      = x86_64
 QEMUARCH  = qemux86-64
 VERSION   = 0.0.1
 
-GPG_HOME   = $(TOPDIR)/gpg
-GPG        = gpg  --homedir=$(GPG_HOME)
-GPG2       = gpg2 --homedir=$(GPG_HOME)
-KEY_NAME   = repo-signing@key
-KEY_CFG    = repo-key.cfg
-KEY_PUB    = repo-key.pub
-KEY_SEC    = repo-key.sec
-GPG_SIGN   = --gpg-homedir=$(GPG_HOME) --gpg-sign=$(KEY_NAME)
+GPG_HOME  = $(TOPDIR)/.gpg.flatpak
+KEY_CFG   = repo-key.cfg
+KEY_PUB   = repo-key.pub
+KEY_SEC   = repo-key.sec
 
 TOPDIR    = $(CURDIR)
-REPO      = $(TOPDIR)/repo
+SCRIPTS   = $(TOPDIR)/scripts
+REPO      = $(TOPDIR)/flatpak.repo
 POKY      = $(TOPDIR)/../poky
 IMAGEDIR  = $(POKY)/build/tmp/deploy/images
+TARDIR    = $(IMAGEDIR)/$(QEMUARCH)
 
-TARDIR      = $(IMAGEDIR)/$(QEMUARCH)
-TAR_XFORM   = --transform 's,^./usr,files,S' \
-              --transform 's,^./etc,files/etc,S'
-TAR_EXCLUDE = --exclude='./[!eu]*'
+RUNTIME_IMAGE = flatpak-runtime-image
+RUNTIME_TAR   = $(TARDIR)/$(RUNTIME_IMAGE)-$(QEMUARCH).tar.bz2
+RUNTIME_LIBS  = runtime.libs
 
-RUNTIME_IMAGE    = flatpak-runtime-image
-RUNTIME_TAR      = $(TARDIR)/$(RUNTIME_IMAGE)-$(QEMUARCH).tar.bz2
-RUNTIME_MANIFEST = $(TARDIR)/$(RUNTIME_IMAGE)-$(QEMUARCH).manifest
-RUNTIME_BRANCH   = runtime/org.yocto.BasePlatform/$(ARCH)/$(VERSION)
-RUNTIME_METADATA = metadata.runtime
+SDK_IMAGE     = flatpak-sdk-image
+SDK_TAR       = $(TARDIR)/$(SDK_IMAGE)-$(QEMUARCH).tar.bz2
+SDK_LIBS      = sdk.libs
 
-SDK_IMAGE        = flatpak-sdk-image
-SDK_TAR          = $(TARDIR)/$(SDK_IMAGE)-$(QEMUARCH).tar.bz2
-SDK_MANIFEST     = $(TARDIR)/$(SDK_IMAGE)-$(QEMUARCH).manifest
-SDK_BRANCH       = runtime/org.yocto.BaseSdk/$(ARCH)/$(VERSION)
-SDK_METADATA     = metadata.sdk
+all: populate-runtime populate-sdk
 
-TMP_RUNTIME      = .runtime.tmp
-TMP_SDK          = .sdk.tmp
-
-
-all: make-repo populate-runtime populate-sdk runtime.libs
-
-clean: clean-repo
-
-make-repo: flatpak-repo.conf
-	if [ ! -d $(REPO) ]; then \
-	    echo "Initializing OSTree repo $(REPO)..."; \
-	    ostree --repo=$(REPO) init --mode=archive-z2; \
-	fi
-
-clean-repo:
-	rm -fr $(REPO)
-
-populate-runtime: make-repo gen-keys $(RUNTIME_TAR)
-	rm -fr $(TMP_RUNTIME) && mkdir $(TMP_RUNTIME)
-	echo "Populating $(REPO) with runtime image..."
-	(cd $(TMP_RUNTIME); \
-	    tar $(TAR_XFORM) $(TAR_EXCLUDE) -xvjf $(RUNTIME_TAR) > /dev/null)
-	cp $(RUNTIME_MANIFEST) $(TMP_RUNTIME)/files/manifest.base
-	find $(TMP_RUNTIME) -type f -name \*.pyc -exec rm -f {} \;
-	find $(TMP_RUNTIME) -type f -name \*.pyo -exec rm -f {} \;
-	cat $(RUNTIME_METADATA).in | \
-	    sed 's/@ARCH@/$(ARCH)/g;s/@VERSION@/$(VERSION)/g' \
-	        > $(TMP_RUNTIME)/metadata
-	find $(TMP_RUNTIME) -type f -exec chmod u+r {} \;
-	ostree --repo=$(REPO) commit $(GPG_SIGN) \
-	    --owner-uid=0 --owner-gid=0 --no-xattrs \
-	    --branch=$(RUNTIME_BRANCH) -s "Runtime $(VERSION)" $(TMP_RUNTIME)
-	ostree --repo=$(REPO) summary $(GPG_SIGN) -u
-	rm -fr $(TMP_RUNTIME)
+populate-runtime: $(KEY_SEC) $(RUNTIME_TAR) $(RUNTIME_LIBS)
+	$(SCRIPTS)/populate-repo.sh --builddir $(POKY)/build --type runtime
 
 $(RUNTIME_TAR):
 	pushd $(POKY) && \
@@ -74,29 +33,15 @@ $(RUNTIME_TAR):
 	    bitbake $(RUNTIME_IMAGE) && \
 	popd
 
+$(RUNTIME_LIBS): $(RUNTIME_TAR)
+	echo "Collecting list of libraries provided by runtime image..."
+	tar -tjf $< | grep 'lib/lib.*\.so\.' > $@
+
 runtime: populate-runtime
 
-runtime.libs: $(RUNTIME_TAR)
-	tar -tjf $(RUNTIME_TAR) | grep 'lib/lib.*\.so\.' > $@
 
-
-populate-sdk: make-repo gen-keys $(SDK_TAR)
-	rm -fr $(TMP_SDK) && mkdir $(TMP_SDK)
-	echo "Populating $(REPO) with SDK image..."
-	(cd $(TMP_SDK); \
-	    tar $(TAR_XFORM) $(TAR_EXCLUDE) -xvjf $(SDK_TAR) > /dev/null)
-	cp $(SDK_MANIFEST) $(TMP_SDK)/files/manifest.base
-	find $(TMP_SDK) -type f -name \*.pyc -exec rm -f {} \;
-	find $(TMP_SDK) -type f -name \*.pyo -exec rm -f {} \;
-	cat $(SDK_METADATA).in | \
-	    sed 's/@ARCH@/$(ARCH)/g;s/@VERSION@/$(VERSION)/g' \
-	        > $(TMP_SDK)/metadata
-	find $(TMP_SDK) -type f -exec chmod u+r {} \;
-	ostree --repo=$(REPO) commit $(GPG_SIGN) \
-	    --owner-uid=0 --owner-gid=0 --no-xattrs \
-	    --branch=$(SDK_BRANCH) -s "SDK $(VERSION)" $(TMP_SDK)
-	ostree --repo=$(REPO) summary $(GPG_SIGN) -u
-	rm -fr $(TMP_SDK)
+populate-sdk: $(KEY_SEC) $(SDK_TAR) $(SDK_LIBS)
+	$(SCRIPTS)/populate-repo.sh --builddir $(POKY)/build --type sdk
 
 $(SDK_TAR):
 	pushd $(POKY) && \
@@ -104,10 +49,14 @@ $(SDK_TAR):
 	    bitbake $(SDK_IMAGE) && \
 	popd
 
+$(SDK_LIBS): $(SDK_TAR)
+	tar -tjf $< | grep 'lib/lib.*\.so\.' > $@
+
 sdk: populate-sdk
 
+
 flatpak-repo.conf: flatpak-repo.conf.in
-	cat $< | sed 's#@PATH@#$(REPO)#g' > $@
+	cat $< | sed 's#@REPO@#$(REPO)#g' > $@
 	echo ""
 	echo "* Generated configuration file $@."
 	echo ""
@@ -124,17 +73,17 @@ flatpak-repo.conf: flatpak-repo.conf.in
 	echo -e '\a'
 	sleep 1
 
-$(KEY_PUB) $(KEY_SEC): $(KEY_CFG)
-	echo "* Generating signing GPG keys for the repository..."
-	mkdir -p $(GPG_HOME)
-	$(GPG) --batch --gen-key $<
-	$(GPG) --import $(KEY_SEC)
-	$(GPG) --import $(KEY_PUB)
-	$(GPG) --export-secret-keys | $(GPG2) --import
 
-gen-keys: $(KEY_PUB) $(KEY_SEC)
+$(KEY_PUB) $(KEY_SEC): $(KEY_CFG)
+	$(SCRIPTS)/gpg-keygen.sh -c $(KEY_CFG)
 
 clean-keys:
 	rm -fr $(GPG_HOME) $(KEY_PUB) $(KEY_SEC)
+
+
+clean: clean-repo
+
+clean-repo:
+	rm -fr $(REPO)
 
 .SILENT:
