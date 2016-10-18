@@ -16,6 +16,7 @@ print_usage () {
     echo "    -l <sublen>  length of subkey to generate (2048)"
     echo "    -n <name>    real name associated with the generated key"
     echo "    -m <mail>    e-mail address associated with the genrated key"
+    echo "    -H <home>    GPG home directory for the keyring."
     echo "    -h           show this help"
 }
 
@@ -53,6 +54,10 @@ parse_command_line () {
                 ;;
             --config|-c)
                 GPG_CONFIG="$2"
+                shift 2
+                ;;
+            --home|-H)
+                GPG_HOME="$2"
                 shift 2
                 ;;
             --help|-h)
@@ -123,12 +128,12 @@ GPG_SUBLENGTH="2048"
 GPG_NAME="Repo Signing Key"
 GPG_MAIL="repo-signing@key"
 GPG_BASE="repo-key"
+GPG_HOME=".gpg.flatpak"
 
 set -e
 
 parse_command_line $*
 
-GPG_HOME=".gpg.flatpak"
 
 gpg1_mkconfig
 gpg1_genkeys
