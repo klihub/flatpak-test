@@ -1,6 +1,6 @@
-Alias "/flatpak/" "@PATH@/"
+Alias "/flatpak/" "@REPO@/"
 
-<Directory @PATH@>
+<Directory @REPO@>
   Options Indexes FollowSymLinks
   Require all granted
 </Directory>
