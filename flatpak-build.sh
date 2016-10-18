@@ -2,7 +2,7 @@
 
 # Print help on usage.
 print_usage () {
-    echo "usage: $0 -n <name> -s <src> -c <cmd> [optional options]"
+    echo "usage: $0 -n <name> [-s <src> -c <cmd> [other options]]"
     echo "    <name>     application id, flatpak name will be org.flatpak.<name>"
     echo "    <src>      sub-directory containing the application source"
     echo "    <cmd>      command used to start up the application"
@@ -11,7 +11,7 @@ print_usage () {
     echo "    -F <fs>    allow access to the given filesystem, which can be"
     echo "               'host', 'home', or a path"
     echo "    -R <repo>  flatpak repository to export the application to"
-    echo "    -C <uri>   clone the sources from the give Git URI"
+    echo "    -C <uri>   clone the sources from the given Git URI"
     echo "    <version>  use application version/branch, defaults to 0.0.1"
     echo ""
     echo "For example:"
@@ -146,7 +146,7 @@ flatpak_install () {
 flatpak_resolve_libs () {
     echo "* Resolving libraries for flatpak app..."
 
-    flatpak build $builddir ./resolve-libs.sh -v \
+    flatpak build $builddir ./scripts/resolve-libs.sh -v \
         -P runtime.libs -R / -F $builddir/files
 }
 
@@ -181,9 +181,9 @@ clone_sources () {
 
 #########################
 # main script
-FLATPAK_REPO="repo"
+FLATPAK_REPO="flatpak.repo"
 FLATPAK_VER="0.0.1"
-FLATPAK_SIGN="--gpg-homedir=$(pwd)/gpg --gpg-sign=repo-signing@key"
+FLATPAK_SIGN="--gpg-homedir=$(pwd)/.gpg.flatpak --gpg-sign=repo-signing@key"
 
 set -e
 
@@ -201,7 +201,7 @@ flatpak_export
 echo ""
 echo "$FLATPAK_APP exported to the repository as org.flatpak.$FLATPAK_APP."
 
-exit $?
+exit 0
 
 #rm -fr $builddir && mkdir $builddir
 #flatpak build-init $builddir org.flatpak.$name \
@@ -218,6 +218,6 @@ exit $?
 #
 #flatpak build-finish $builddir \
 #    --share=$SHARED --filesystem=$FILESYSTEMS --command=$command
-#flatpak build-export repo $builddir
+#flatpak build-export flatpak.repo $builddir
 #
 
