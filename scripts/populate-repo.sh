@@ -21,6 +21,7 @@ print_usage () {
     echo "    -m <metadata>   image metadata to use"
     echo "    -b <builddir>   builddir to search for images based on type"
     echo "    -t sdk|runtime  image type"
+    echo "    -l <lib-list>   generate provided library list file"
     echo "    -H <gpg-dir>    GPG homed directory with keyring"
     echo "    -K <keyid>      GPG key id used to sign the repository"
     echo "    -h              show this help"
@@ -56,6 +57,10 @@ parse_command_line () {
                 ;;
             --type|-t)
                 IMG_TYPE=$2
+                shift 2
+                ;;
+            --libs|-l)
+                IMG_LIBS=$2
                 shift 2
                 ;;
             --gpg-homedir|--gpg-home|-H)
@@ -176,7 +181,6 @@ repo_populate () {
         --exclude './[!eu]*' -xjf $IMG_TARBALL;
     find $SYSROOT -type f -exec chmod u+r {} \;
     mv $REPO_METADATA $SYSROOT/metadata
-
     echo "* Populating repository with $IMG_TYPE image..."
     ostree --repo=$REPO_PATH commit \
            --gpg-homedir=$GPG_HOME --gpg-sign=$GPG_KEY \
@@ -196,6 +200,15 @@ repo_update_summary () {
            --gpg-homedir=$GPG_HOME --gpg-sign=$GPG_KEY
 }
 
+# Generate list of libraries provided by the image.
+generate_lib_list () {
+    [ -z "$IMG_LIBS" ] && return 0
+
+    echo "* Generating list of provided libraries..."
+    tar -tjf $IMG_TARBALL | \
+        grep 'lib/lib.*\.so\.' | sed 's#^\./#/#g' > $IMG_LIBS
+}
+
 
 #########################
 # main script
@@ -208,6 +221,7 @@ IMG_VERSION=0.0.1
 IMG_METADATA=""
 IMG_TARBALL=""
 IMG_TYPE=""
+IMG_LIBS=""
 
 parse_command_line $*
 
@@ -221,3 +235,4 @@ metadata_prepare
 repo_init
 repo_populate
 repo_update_summary
+generate_lib_list
