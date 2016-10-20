@@ -24,9 +24,9 @@ SDK_LIBS      = sdk.libs
 
 all: populate-runtime populate-sdk
 
-populate-runtime: $(KEY_SEC) $(RUNTIME_TAR) $(RUNTIME_LIBS)
+populate-runtime: $(KEY_SEC) $(RUNTIME_TAR)
 	$(SCRIPTS)/populate-repo.sh --repo $(REPO) \
-	    --builddir $(POKY)/build --type runtime
+	    --builddir $(POKY)/build --type runtime --libs $(RUNTIME_LIBS)
 
 $(RUNTIME_TAR):
 	pushd $(POKY) && \
@@ -34,25 +34,18 @@ $(RUNTIME_TAR):
 	    bitbake $(RUNTIME_IMAGE) && \
 	popd
 
-$(RUNTIME_LIBS): $(RUNTIME_TAR)
-	echo "Collecting list of libraries provided by runtime image..."
-	tar -tjf $< | grep 'lib/lib.*\.so\.' > $@
-
 runtime: populate-runtime
 
 
 populate-sdk: $(KEY_SEC) $(SDK_TAR) $(SDK_LIBS)
 	$(SCRIPTS)/populate-repo.sh --repo $(REPO) \
-	    --builddir $(POKY)/build --type sdk
+	    --builddir $(POKY)/build --type sdk --libs $(SDK_LIBS)
 
 $(SDK_TAR):
 	pushd $(POKY) && \
 	    source ./oe-init-build-env && \
 	    bitbake $(SDK_IMAGE) && \
 	popd
-
-$(SDK_LIBS): $(SDK_TAR)
-	tar -tjf $< | grep 'lib/lib.*\.so\.' > $@
 
 sdk: populate-sdk
 
