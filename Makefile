@@ -30,20 +30,20 @@ populate-runtime: $(KEY_SEC) $(RUNTIME_TAR)
 
 $(RUNTIME_TAR):
 	pushd $(POKY) && \
-	    source ./oe-init-build-env && \
+	    TEMPLATECONF=meta-flatpak/conf source ./oe-init-build-env && \
 	    bitbake $(RUNTIME_IMAGE) && \
 	popd
 
 runtime: populate-runtime
 
 
-populate-sdk: $(KEY_SEC) $(SDK_TAR) $(SDK_LIBS)
+populate-sdk: $(KEY_SEC) $(SDK_TAR)
 	$(SCRIPTS)/populate-repo.sh --repo $(REPO) \
 	    --builddir $(POKY)/build --type sdk --libs $(SDK_LIBS)
 
 $(SDK_TAR):
 	pushd $(POKY) && \
-	    source ./oe-init-build-env && \
+	    TEMPLATECONF=meta-flatpak/conf source ./oe-init-build-env && \
 	    bitbake $(SDK_IMAGE) && \
 	popd
 
