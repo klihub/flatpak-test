@@ -100,6 +100,15 @@ find_available_libs () {
     done
 }
 
+# Check if a library is part of the package.
+is_package_lib () {
+    local _lib="${1##*/}"
+
+    debug  "    testing $files/lib/$_lib..."
+
+    [ -e $files/lib/$_lib ] && return 0 || return 1
+}
+
 # Check if a library is available.
 is_available () {
     local _lib="${1##*/}"
@@ -164,6 +173,11 @@ resolve_libs () {
         _status="${libraries[$_l]}"
 
         msg "    -> needs $_lib ($_path, ${_status:-needs copying})"
+
+        if is_package_lib $_lib; then
+            msg "        -> is a package-local library."
+            continue
+        fi
 
         if ! is_available $_lib; then
             fatal "Library $_lib is unavailable."
