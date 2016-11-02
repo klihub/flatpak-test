@@ -2,6 +2,9 @@
 
 # Print help on usage.
 print_usage () {
+    if [ -n "$*" ]; then
+        echo "$*"
+    fi
     echo "usage: $0 -n <name> [-s <src> -c <cmd> [other options]]"
     echo "    <name>     application id, flatpak name will be org.flatpak.<name>"
     echo "    <src>      sub-directory containing the application source"
@@ -34,8 +37,12 @@ parse_command_line () {
                 shift 2
                 ;;
             --command|-c)
-                FLATPAK_CMD="$2"
-                shift 2
+                shift
+                while [ -n "$1" ]; do
+                    [ -n "$FLATPAK_CMD" ] && FLATPAK_CMD="$FLATPAK_CMD $1" || \
+                            FLATPAK_CMD="$1"
+                    shift
+                done
                 ;;
             --version|-v)
                 FLATPAK_VER="$2"
@@ -63,14 +70,14 @@ parse_command_line () {
                 ;;
 
             *)
-                print_usage
+                print_usage "unknown argument $1"
                 exit 1
                 ;;
             esac
     done
 
     if [ -z "$FLATPAK_APP" ]; then
-        print_usage
+        print_usage "missing application name (--name <app>)"
         exit 1
     fi
 
@@ -155,10 +162,13 @@ flatpak_finish () {
     echo "* Finalizing flatpak build..."
     echo "* share: $FLATPAK_SHARE"
     echo "* filesystems: $FLATPAK_FS"
+    echo "* command: $FLATPAK_CMD"
+
+    [ -n "$EDITOR" ] && $EDITOR $builddir/metadata || vi $builddir/metadata
 
     flatpak build-finish $builddir \
         $FLATPAK_SHARE $FLATPAK_FS \
-        --command=$FLATPAK_CMD
+        --command="$FLATPAK_CMD"
 }
 
 # Export the application to the given repository.
@@ -184,6 +194,7 @@ clone_sources () {
 FLATPAK_REPO="flatpak.repo"
 FLATPAK_VER="0.0.1"
 FLATPAK_SIGN="--gpg-homedir=$(pwd)/.gpg.flatpak --gpg-sign=repo-signing@key"
+FLATPAK_CMD=""
 
 set -e
 
