@@ -164,8 +164,6 @@ flatpak_finish () {
     echo "* filesystems: $FLATPAK_FS"
     echo "* command: $FLATPAK_CMD"
 
-    [ -n "$EDITOR" ] && $EDITOR $builddir/metadata || vi $builddir/metadata
-
     flatpak build-finish $builddir \
         $FLATPAK_SHARE $FLATPAK_FS \
         --command="$FLATPAK_CMD"
@@ -174,6 +172,11 @@ flatpak_finish () {
 # Export the application to the given repository.
 flatpak_export () {
     echo "Exporting flatpak app to repository $FLATPAK_REPO..."
+    echo "Please check and edit if necessary the application metadata file..."
+    sleep 2
+
+    [ -n "$EDITOR" ] && $EDITOR $builddir/metadata || vi $builddir/metadata
+
 
     flatpak build-export $FLATPAK_SIGN $FLATPAK_REPO $builddir
 }
